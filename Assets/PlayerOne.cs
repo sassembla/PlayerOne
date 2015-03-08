@@ -15,7 +15,7 @@ class PlayerOne : MonoBehaviour {
 		};
 
 		ws.OnMessage += (sender, e) => {
-			Debug.Log("message received!");
+			Debug.Log("message received!:" + e.Data);
 		};
 
 		ws.OnError += (sender, e) => {};
