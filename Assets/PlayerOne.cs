@@ -1,31 +1,33 @@
 using UnityEngine;
+
 using System.Collections.Generic;
 
+using ClientLSWebSocket;
 
 class PlayerOne : MonoBehaviour {
 	
-	public static USSAWebSocketSharp.WebSocket ws;
+	public static WebSocket webSocket;
 
 	public void Start () {
 		// start websocket connect
-		ws = new USSAWebSocketSharp.WebSocket("ws://127.0.0.1:80/client");
+		webSocket = new WebSocket("ws://127.0.0.1:80/client");
 
-		ws.OnOpen += (sender, e) => {
+		webSocket.OnOpen += (sender, e) => {
 			Debug.Log("connected!:" + e);
 		};
 
-		ws.OnMessage += (sender, e) => {
+		webSocket.OnMessage += (sender, e) => {
 			Debug.Log("message received!:" + e.Data);
 		};
 
-		ws.OnError += (sender, e) => {
+		webSocket.OnError += (sender, e) => {
 			Debug.Log("disconnected:" + e.Message);
 		};
 
-		ws.OnClose += (sender, e) => {
+		webSocket.OnClose += (sender, e) => {
 			Debug.Log("closed:" + e.Reason);
 		};
 		
-		ws.Connect();
+		webSocket.Connect();
 	}
 }
