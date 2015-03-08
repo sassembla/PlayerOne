@@ -1,0 +1,14 @@
+
+Assets/SublimeSocketAsset/*
+
+
+bin/logs/nginx.pid
+
+bin/logs/error.log
+
+bin/logs/access.log
+
+Library/*
+
+Temp/*
+
