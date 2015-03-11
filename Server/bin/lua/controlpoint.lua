@@ -1,7 +1,3 @@
-
--- どっちにしても、nginx起動時にこのプロセスを開始しておきたい。
--- あとredisでのpub-subやめたいな。あの性質、別の方法で実現できないかな。
-
 IDENTIFIER_CENTRAL = "central"
 IDENTIFIER_CLIENT = "client"
 

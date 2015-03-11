@@ -3,55 +3,65 @@ using UnityEngine;
 using System;
 using System.Collections.Generic;
 
-using ClientLSWebSocket;
+using wsControl;
+
 
 class PlayerOne : MonoBehaviour {
 
 	// generate uuid if new.
 	public readonly string userId = Guid.NewGuid().ToString();
-	public static WebSocket webSocket;
-
+	
+	private int localFrame;
 
 	public void Awake () {
-		// start websocket connect
-		webSocket = new WebSocket("ws://127.0.0.1:80/client");
-
-		webSocket.OnOpen += (sender, e) => {
-			Application.logMessageReceived += HandleLog;
-
-			SendCommand(new Commands.SetId(userId));
-		};
-
-		webSocket.OnMessage += (sender, e) => {
-			Debug.Log("message received!:" + e.Data);
-		};
-
-		webSocket.OnError += (sender, e) => {
-			Debug.Log("disconnected:" + e.Message);
-
-			// 再接続を試みないとな
-		};
-
-		webSocket.OnClose += (sender, e) => {
-			Debug.Log("closed:" + e.Reason);
-		};
 		
-		webSocket.Connect();
+		WebSocketConnectionController.Init(
+			userId,
+
+			// connected
+			() => {
+				Debug.Log("connect succeeded!");
+				Application.logMessageReceived += HandleLog;
+
+				WebSocketConnectionController.SendCommand(new Commands.SetId(userId).ToString());
+			},
+
+			// messages comes from server
+			(List<string> datas) => {
+				Debug.Log("datas received:" + datas.Count);
+				foreach (var data in datas) {
+					Debug.Log("data:" + data + " in localFrame:" + localFrame);
+				}
+				transform.Translate(new Vector3(100, 100, 100));
+			},
+
+			// connect fail
+			(string connectionFailReason) => {
+				Debug.Log("failed to connect! by reason:" + connectionFailReason);
+			},
+
+			// error on connection
+			(string connectionError) => {
+				Debug.Log("failed in running! by reason:" + connectionError);
+			},
+
+			// auto reconnect
+			true,
+			() => {
+				Debug.Log("reconnecting!");
+			}
+		);
 	}
 
 	public void Update () {
 		// Debug.Log("up!");
+		localFrame++;
 	}
 
 	public void OnApplicationQuit () {
 		Debug.Log("exitting..");
-		if (webSocket.IsAlive) webSocket.Close();
+		WebSocketConnectionController.CloseCurrentConnection();
 	}
-
-	public void SendCommand (Commands.JSONString commandSource) {
-		if (webSocket.IsAlive) webSocket.Send(commandSource.ToString());
-	}
-
 
 
 
@@ -61,7 +71,7 @@ class PlayerOne : MonoBehaviour {
 		send log to server.
 	*/
 	void HandleLog(string logString, string stackTrace, LogType type) {
-		SendCommand(new Commands.Log(userId, logString));
+		WebSocketConnectionController.SendCommand(new Commands.Log(userId, logString).ToString());
     }
 
 

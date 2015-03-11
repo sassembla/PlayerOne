@@ -17,3 +17,8 @@ Server/bin/scgi_temp/*
 Server/bin/proxy_temp/*
 Server/bin/fastcgi_temp/*
 Server/bin/client_body_temp/*
+UniRxStudy/*
+
+Server/bin/logs/error.log
+
+Server/bin/logs/host.access.log
