@@ -23,13 +23,13 @@ local serverId = uuid.getUUID()
 subRedisCon = redis:new()
 local ok, err = subRedisCon:connect("127.0.0.1", 6379)
 if not ok then
-	ngx.log(ngx.ERR, "failed to generate subscriver")
+	ngx.log(ngx.ERR, "connection:", serverId, " failed to generate subscriver")
 	return
 end
 subRedisCon:set_timeout(1000 * 60 * 60)
 local ok, err = subRedisCon:subscribe(IDENTIFIER_CLIENT)
 if not ok then
-	ngx.log(ngx.ERR, "failed to start subscriver")
+	ngx.log(ngx.ERR, "connection:", serverId, " failed to start subscriver")
 	return
 end
 
@@ -37,7 +37,7 @@ end
 pubRedisCon = redis:new()
 local ok, err = pubRedisCon:connect("127.0.0.1", 6379)
 if not ok then
-	ngx.log(ngx.ERR, "failed to generate publisher")
+	ngx.log(ngx.ERR, "connection:", serverId, " failed to generate publisher")
 	return
 end
 
@@ -51,8 +51,8 @@ wb, wErr = wsServer:new{
 }
 
 if not wb then
-	ngx.log(ngx.ERR, "failed to new websocket: ", wErr)
-	return ngx.exit(444)
+	ngx.log(ngx.ERR, "connection:", serverId, " failed to new websocket: ", wErr)
+	return
 end
 
 
@@ -72,14 +72,14 @@ function connectWebSocket()
 		if wb.fatal then
 			local jsonData = json:encode({connectionId = serverId, state = STATE_DISCONNECT_1})
 			pubRedisCon:publish(IDENTIFIER_CENTRAL, jsonData)
-
-			return ngx.exit(444)
+			ngx.log(ngx.ERR, "connection:", serverId, " failed to send ping: ", err)
+			break
 		end
 		if not recv_data then
 			local bytes, err = wb:send_ping()
 			if not bytes then
-				ngx.log(ngx.ERR, "failed to send ping: ", err)
-				return ngx.exit(444)
+				ngx.log(ngx.ERR, "connection:", serverId, " failed to send ping: ", err)
+				break
 			end
 		end
 
@@ -87,13 +87,13 @@ function connectWebSocket()
 			local jsonData = json:encode({connectionId = serverId, state = STATE_DISCONNECT_2})
 			pubRedisCon:publish(IDENTIFIER_CENTRAL, jsonData)
 
-			ngx.log(ngx.ERR, "connection closed:", serverId)
+			-- start close.
 			break
 		elseif typ == "ping" then
 			local bytes, err = wb:send_pong()
 			if not bytes then
-				ngx.log(ngx.ERR, "failed to send pong: ", err)
-				return ngx.exit(444)
+				ngx.log(ngx.ERR, "connection:", serverId, " failed to send pong: ", err)
+				break
 			end
 		elseif typ == "pong" then
 			ngx.log(ngx.INFO, "client ponged")
@@ -106,6 +106,7 @@ function connectWebSocket()
 	end
 
 	wb:send_close()
+	ngx.log(ngx.ERR, "connection:", serverId, " connection closed")
 end
 
 -- subscribe loop
@@ -114,9 +115,15 @@ function subscribe ()
 	while true do
 		local res, err = subRedisCon:read_reply()
 		if not res then
-			ngx.log(ngx.ERR, "redis subscribe read error:", err)
+			ngx.log(ngx.ERR, "connection:", serverId, " redis subscribe read error:", err)
 			break
 		else
+			if not wb:is_connecting() then
+				subRedisCon:unsubscribe(IDENTIFIER_CLIENT)
+				ngx.log(ngx.ERR, "connection:", serverId, " redis unsubscribed by websocket closed.")
+				break
+			end
+
 			-- for i,v in ipairs(res) do
 			-- 	ngx.log(ngx.ERR, "client i:", i, " v:", v)
 			-- end
@@ -130,14 +137,14 @@ function subscribe ()
 			if not targetIds then
 				local bytes, err = wb:send_text(data)
 				if not bytes then
-					ngx.log(ngx.ERR, "failed to send text 1:", err)
-					return ngx.exit(444)
+					ngx.log(ngx.ERR, "connection:", serverId, " failed to send text 1:", err)
+					break
 				end
 			elseif contains(targetIds, serverId) then
 				local bytes, err = wb:send_text(data)
 				if not bytes then
-					ngx.log(ngx.ERR, "failed to send text 2:", err)
-					return ngx.exit(444)
+					ngx.log(ngx.ERR, "connection:", serverId, " failed to send text 2:", err)
+					break
 				end
 			end
 		end

@@ -9,7 +9,7 @@ using wsControl;
 class PlayerOne : MonoBehaviour {
 
 	// generate uuid if new.
-	public readonly string userId = Guid.NewGuid().ToString();
+	public readonly string userId = "200";//Guid.NewGuid().ToString();
 	
 	private int localFrame;
 

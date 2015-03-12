@@ -5,6 +5,8 @@ local uuid = require "uuid.uuid"
 local M = {[0] = "websocketServer:" .. uuid.getUUID()}
 local mt = { __index = M }
 
+local connecting = false
+
 function M.new(self, opts)
     if ngx.headers_sent then
         return nil, "response header already sent"
@@ -96,6 +98,8 @@ function M.new(self, opts)
         end
     end
 
+    connecting = true
+
     return setmetatable({
         sock = sock,
         max_payload_len = max_payload_len or 65535,
@@ -172,6 +176,9 @@ function M.send_close(self, code, msg)
         payload = string.char(bit.band(bit.rshift(code, 8), 0xff), bit.band(code, 0xff))
                         .. (msg or "")
     end
+
+    connecting = false
+    
     return send_frame(self, true, 0x8, payload)
 end
 
@@ -183,6 +190,10 @@ end
 
 function M.send_pong(self, data)
     return send_frame(self, true, 0xa, data)
+end
+
+function M.is_connecting(self)
+    return connecting
 end
 
 

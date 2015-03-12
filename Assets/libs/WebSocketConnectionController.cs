@@ -34,7 +34,7 @@ namespace wsControl {
 			Observable.EveryUpdate().Subscribe(
 				_ => {
 					if (messageQueue.Any()) {
-						message(messageQueue);
+						message(new List<string>(messageQueue));
 						messageQueue.Clear();
 					}
 				}

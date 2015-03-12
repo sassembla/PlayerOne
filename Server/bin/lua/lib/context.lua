@@ -8,68 +8,28 @@ local M = {}
 local json = require "json.json"
 connections = {}
 status = {}
-
 count = 0
--- 俺氏、luaの辞書をよくわかってない可能性がある。
--- 保存したはずのデータが参照されない。
--- statusとかが空になる。
--- インスタンス的にthreadが関与しているふうにも見えないが。
--- countとかはちゃんとアクセスできているので、？という感じ。学ぶ必要がありそう。
 
 
-
-function M.onConnect(from, publish)
-	ngx.log(ngx.ERR, "connect from:", from)
-end
-
+-- fire when message received.
 function M.onMessage(from, data, publish)
-
 	local decodedJsonData = json:decode(data)
 
-
 	-- run commands
-	if decodedJsonData.command == "setId" then setNewOrReconnectedPlayerId(decodedJsonData, from)
+	if decodedJsonData.command == "setId" then setNewOrReconnectedPlayerId(decodedJsonData, from) 
+	elseif decodedJsonData.command == "move" then setMove(decodedJsonData)
 	elseif decodedJsonData.command == "logging" then logging(decodedJsonData)
-	
-
+	-- add other command here!
 	else publish(data) end
-
-
-
-	
-end
-
-function M.onDisconnect(from, reason, publish)
-	local playerId = "not match"
-	
-	for i,v in ipairs(connections) do
-		ngx.log(ngx.ERR, "isemp????:", i, "	", v, "	vs	", from)
-		if v == from then
-			playerId = i
-		end
-	end
-
-	if playerId == "not match" then
-		ngx.log(ngx.ERR, "playerId did not found, but disconnected:", from, "	reason:", reason)
-	else
-		status[playerId] = "disconnected"
-		ngx.log(ngx.ERR, "player drop!:", playerId, ":", from, "	reason:", reason)
-	end
-
 end
 
 
--- 100f/s で動く処理
+-- 100f/s loop by server.
 function M.onFrame(publish)
-	
-	if count % 100 == 0 then
-		for i,v in ipairs(status) do
-			ngx.log(ngx.ERR, "playerId:", i, ":", v, "	is:", status[i])
-		end
-
-		publish("data!:" .. count)
+	if count % 5 == 0 then -- 20fps
+		local data = gameLogic(count)
+		publish(data, getAliveConnections())
 	end
-
 
 	count = count + 1
 end
@@ -77,8 +37,26 @@ end
 
 
 
+gameData = {}
+
+function gameLogic(count)
+	gameData["counter"] = count
+	return json:encode(gameData)
+end
 
 
+function getAliveConnections()
+	local livingConnections = {}
+	local count = 1
+	for i in pairs(status) do
+		ngx.log(ngx.ERR, "playerId checking:", i, " con:", status[i])
+		if status[i] == "alive" then
+			livingConnections[count] = connections[i]
+			count = count + 1
+		end
+	end
+	return livingConnections
+end
 
 
 
@@ -92,8 +70,31 @@ function setNewOrReconnectedPlayerId (decodedJsonData, connectionId)
 	connections[playerId] = connectionId
 	status[playerId] = "alive"
 
-	ngx.log(ngx.ERR, "player set!:", playerId, ":", connectionId, "	status:", status[playerId])
+	gameData[playerId] = {move={x = 0, y = 0}, hp=100}
+
+	ngx.log(ngx.ERR, "connected new player is:", playerId, " connectionId:", connectionId)
 end
+
+function setMove (decodedJsonData)
+	local playerId = decodedJsonData.playerId
+
+	if not status[playerId] == "alive" then
+		 return
+	end
+
+
+	local addX = decodedJsonData.addX
+	local addY = decodedJsonData.addY
+
+	local beforeX = gameData.playerId.move.x
+	local beforeY = gameData.playerId.move.y
+	
+	local afterX = beforeX + addX
+	local afterY = beforeY + addY
+
+	gameData.playerId.move = {x = afterX, y = afterY}
+end
+
 
 
 -- playerIdと紐づけたロギングを行う
@@ -101,9 +102,36 @@ function logging (decodedJsonData)
 	local playerId = decodedJsonData.playerId
 	local log = decodedJsonData.log
 
-	ngx.log(ngx.ERR, playerId, ":", log)
+	-- ngx.log(ngx.ERR, "p:", playerId, ":", log)
 end
 
+
+
+
+-- connect, disconnect
+function M.onConnect(from, publish)
+	ngx.log(ngx.ERR, "connect from:", from)
+end
+
+
+function M.onDisconnect(from, reason, publish)
+	local disconnectedPlayerId = "not match"
+	
+	for playerId in pairs(connections) do
+		if from == connections[playerId] then
+			disconnectedPlayerId = playerId
+			break
+		end
+	end
+
+	if disconnectedPlayerId == "not match" then
+		ngx.log(ngx.ERR, "playerId did not found, but disconnected:", from, "	reason:", reason)
+	else
+		status[disconnectedPlayerId] = "disconnected"
+		ngx.log(ngx.ERR, "player drop!:", disconnectedPlayerId, ":", from, "	reason:", reason)
+	end
+
+end
 
 
 

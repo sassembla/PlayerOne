@@ -79,9 +79,7 @@ function tick ()
 	end
 end
 
-
-function publish (dataSource, ...)
-	local targetIds = { ... }
+function publish (dataSource, targetIds)
 	if 0 < #targetIds then
 		local packData = json:encode({targets = targetIds, data = dataSource})
 		pubRedisCon:publish(IDENTIFIER_CLIENT, packData)

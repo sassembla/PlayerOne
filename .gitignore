@@ -22,3 +22,5 @@ UniRxStudy/*
 Server/bin/logs/error.log
 
 Server/bin/logs/host.access.log
+
+Server/bin/logs/nginx.pid
