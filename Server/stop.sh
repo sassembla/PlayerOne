@@ -1,1 +1,1 @@
-sudo bin/sbin/nginx -s stop
+sudo bin/sbin/nginx -p $(pwd)/bin -s stop
