@@ -18,7 +18,7 @@ namespace wsControl {
 		public static WebSocket webSocket;
 
 		public static string WEBSOCKET_ENTRYPOINT = "ws://127.0.0.1:80/client";
-		private static int RECONNECTION_MILLISEC = 100;
+		private static int RECONNECTION_MILLISEC = 1000;
 
 		public static List<string> messageQueue = new List<string>();
 
